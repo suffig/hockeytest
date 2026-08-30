@@ -64,6 +64,15 @@
   li.clickable{cursor:pointer}
   li.clickable:hover{border-color:var(--accent)}
   mark{background:var(--mark);color:var(--mark-ink);border-radius:3px;padding:0 1px}
+  .lock{max-width:420px;margin:60px auto}
+  .lock h2{margin:0 0 6px;font-size:18px}
+  .lock p{margin:0 0 14px;color:var(--muted);font-size:14px}
+  .lock form{display:flex;gap:8px}
+  .lock input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--bg);color:var(--ink);font:inherit;font-size:15px}
+  .lock input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .lock button{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .lockerr{margin:12px 0 0;color:var(--bad);font-size:14px}
   .empty{text-align:center;color:var(--muted);padding:60px 20px}
   .empty code{background:var(--chip);padding:2px 6px;border-radius:6px}
 </style>
@@ -84,7 +93,10 @@
 </header>
 <main id="list"></main>
 
+<!-- Lokal die Klartextdaten, auf einem öffentlichen Hoster die verschlüsselten.
+     Es reicht, wenn eine der beiden Dateien vorhanden ist. -->
 <script src="data/data.js"></script>
+<script src="data/data-enc.js"></script>
 <script>
 (function(){
   var DATEN = window.LERN_DATEN || [];
@@ -186,13 +198,15 @@
       elList = document.getElementById('list'),
       elStats = document.getElementById('stats');
 
-  var bereiche = [];
-  DATEN.forEach(function(e){
-    (e.bereiche||[]).forEach(function(b){ if(bereiche.indexOf(b) < 0) bereiche.push(b); });
-  });
-  bereiche.sort();
-  elQuiz.innerHTML = '<option value="">alle Bereiche</option>' +
-    bereiche.map(function(b){ return '<option value="'+esc(b)+'">'+esc(b)+'</option>'; }).join('');
+  function bereicheAufbauen(){
+    var bereiche = [];
+    DATEN.forEach(function(e){
+      (e.bereiche||[]).forEach(function(b){ if(bereiche.indexOf(b) < 0) bereiche.push(b); });
+    });
+    bereiche.sort();
+    elQuiz.innerHTML = '<option value="">alle Bereiche</option>' +
+      bereiche.map(function(b){ return '<option value="'+esc(b)+'">'+esc(b)+'</option>'; }).join('');
+  }
 
   function draw(){
     var terms = fold(state.q).split(' ').filter(Boolean);
@@ -268,7 +282,79 @@
     if(e.key === '/' && document.activeElement !== elQ){ e.preventDefault(); elQ.focus(); elQ.select(); }
   });
 
-  draw();
+  // ---------- Start, ggf. mit Passwort ----------
+  var elHeader = document.querySelector('header');
+
+  function start(daten){
+    DATEN = daten;
+    bereicheAufbauen();
+    elHeader.style.display = '';
+    draw();
+    elQ.focus();
+  }
+
+  function b64(s){
+    var bin = atob(s), out = new Uint8Array(bin.length);
+    for(var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  // AES-256-GCM, Schlüssel per PBKDF2-SHA256 aus dem Passwort
+  async function entschluesseln(passwort){
+    var enc = window.LERN_ENC;
+    var basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(passwort), 'PBKDF2', false, ['deriveKey']);
+    var key = await crypto.subtle.deriveKey(
+      { name:'PBKDF2', salt: b64(enc.salt), iterations: enc.iter, hash:'SHA-256' },
+      basis, { name:'AES-GCM', length:256 }, false, ['decrypt']);
+    var klar = await crypto.subtle.decrypt({ name:'AES-GCM', iv: b64(enc.iv) }, key, b64(enc.ct));
+    return JSON.parse(new TextDecoder().decode(klar));
+  }
+
+  function schlossZeigen(meldung){
+    elHeader.style.display = 'none';
+    elList.innerHTML =
+      '<div class="card lock">'
+      + '<h2>Regelfragen-Trainer</h2>'
+      + '<p>Die Fragen sind verschlüsselt abgelegt. Bitte Passwort eingeben.</p>'
+      + '<form id="lockform"><input type="password" id="pw" autocomplete="current-password" '
+      + 'placeholder="Passwort" autofocus><button type="submit">Öffnen</button></form>'
+      + (meldung ? '<p class="lockerr">'+esc(meldung)+'</p>' : '')
+      + '</div>';
+    var f = document.getElementById('lockform');
+    document.getElementById('pw').focus();
+    f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var pw = document.getElementById('pw').value;
+      f.querySelector('button').disabled = true;
+      entschluesseln(pw).then(function(daten){
+        try { sessionStorage.setItem(LS + '-pw', pw); } catch(e){}
+        start(daten);
+      }).catch(function(){
+        schlossZeigen('Passwort falsch.');
+      });
+    });
+  }
+
+  if(DATEN.length){
+    start(DATEN);
+  } else if(window.LERN_ENC){
+    if(!window.crypto || !crypto.subtle){
+      elHeader.style.display = 'none';
+      elList.innerHTML = '<div class="empty"><p>Entschlüsseln geht nur über <code>https://</code> '
+        + 'oder <code>localhost</code>.</p><p>Beim Öffnen als lokale Datei stattdessen '
+        + '<code>data/data.js</code> verwenden.</p></div>';
+    } else {
+      var gemerkt = null;
+      try { gemerkt = sessionStorage.getItem(LS + '-pw'); } catch(e){}
+      if(gemerkt){
+        entschluesseln(gemerkt).then(start).catch(function(){ schlossZeigen(); });
+      } else {
+        schlossZeigen();
+      }
+    }
+  } else {
+    draw(); // zeigt den Hinweis, dass noch keine Daten da sind
+  }
 })();
 </script>
 </body>

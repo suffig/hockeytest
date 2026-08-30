@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regelfragen-Trainer</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --ink:#16181d; --muted:#5d6470; --line:#e2e5ea;
+    --accent:#c8102e; --accent-ink:#fff; --ok:#127a4b; --ok-bg:#e6f5ec;
+    --bad:#b02020; --bad-bg:#fdeaea; --chip:#eef0f4;
+    --shadow:0 1px 2px rgba(16,18,24,.06),0 8px 24px rgba(16,18,24,.06);
+    --mark:#ffe89a; --mark-ink:#3a2c00; --radius:12px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1115; --panel:#171a20; --ink:#e8eaee; --muted:#98a0ad; --line:#262b33;
+      --accent:#ff4d63; --accent-ink:#1a0508; --ok:#4ad295; --ok-bg:#12291f;
+      --bad:#ff7a7a; --bad-bg:#2b1417; --chip:#212630; --shadow:none;
+      --mark:#6b5a12; --mark-ink:#ffe89a;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1115; --panel:#171a20; --ink:#e8eaee; --muted:#98a0ad; --line:#262b33;
+    --accent:#ff4d63; --accent-ink:#1a0508; --ok:#4ad295; --ok-bg:#12291f;
+    --bad:#ff7a7a; --bad-bg:#2b1417; --chip:#212630; --shadow:none;
+    --mark:#6b5a12; --mark-ink:#ffe89a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:14px 20px 12px}
+  .wrap{max-width:1000px;margin:0 auto}
+  h1{margin:0 0 10px;font-size:19px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+  h1 .puck{width:22px;height:22px;border-radius:50%;background:var(--accent);flex:none}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input[type=search]{flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--panel);color:var(--ink);font-size:15px}
+  input[type=search]:focus{outline:2px solid var(--accent);outline-offset:1px}
+  select,button{font:inherit;font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;
+    background:var(--panel);color:var(--ink);cursor:pointer}
+  button:hover,select:hover{border-color:var(--accent)}
+  button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .stats{color:var(--muted);font-size:13px;margin-top:10px}
+  main{max-width:1000px;margin:0 auto;padding:18px 20px 80px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .chip{background:var(--chip);color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.03em;
+    text-transform:uppercase;padding:3px 8px;border-radius:99px}
+  .chip.warn{background:var(--bad-bg);color:var(--bad)}
+  .q{margin-bottom:12px}
+  .q img{max-width:100%;height:auto;border-radius:8px}
+  .tablewrap{overflow-x:auto;margin:12px 0}
+  table.bb{border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+  table.bb td{border:1px solid var(--line);padding:6px 12px;text-align:left;vertical-align:top}
+  table.bb tr:first-child td{background:var(--chip);font-weight:600;color:var(--muted)}
+  ol.opts{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+  ol.opts li{border:1px solid var(--line);border-radius:9px;padding:9px 12px;display:flex;gap:10px;align-items:flex-start}
+  ol.opts li .lbl{font-weight:700;color:var(--muted);flex:none;width:1.3em}
+  li.correct{background:var(--ok-bg);border-color:var(--ok)}
+  li.correct .lbl{color:var(--ok)}
+  li.pick-wrong{background:var(--bad-bg);border-color:var(--bad)}
+  li.clickable{cursor:pointer}
+  li.clickable:hover{border-color:var(--accent)}
+  mark{background:var(--mark);color:var(--mark-ink);border-radius:3px;padding:0 1px}
+  .empty{text-align:center;color:var(--muted);padding:60px 20px}
+  .empty code{background:var(--chip);padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1><span class="puck"></span>Regelfragen-Trainer</h1>
+    <div class="row">
+      <input type="search" id="q" placeholder="Suchen in Fragen und Antworten … (z. B. Abseits, Schoner, Unterzahl)" autofocus>
+      <select id="quiz"></select>
+      <button id="mode" title="Zwischen Nachschlagen und Abfragen wechseln">Modus: Nachschlagen</button>
+      <button id="onlyOpen" title="Nur Fragen ohne gesicherte Antwort">nur ungelöst</button>
+      <button id="theme" title="Hell / Dunkel">◐</button>
+    </div>
+    <div class="stats" id="stats"></div>
+  </div>
+</header>
+<main id="list"></main>
+
+<script src="data/data.js"></script>
+<script>
+(function(){
+  var DATEN = window.LERN_DATEN || [];
+  var LETTERS = 'ABCDEFGHIJKLMNOP';
+  var LS = 'regelfragen-trainer';
+  var state = { q:'', quiz:'', abfrage:false, onlyOpen:false, picks:{} };
+  try { state.picks = JSON.parse(localStorage.getItem(LS) || '{}'); } catch(e){}
+  function save(){ try{ localStorage.setItem(LS, JSON.stringify(state.picks)); }catch(e){} }
+
+  // ---------- BBCode -> HTML ----------
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];
+    });
+  }
+
+  // [table][tr][td]…[/td][/tr][/table] -> echte Tabelle.
+  // Zellen laufen wieder durch render(), damit dort [b], [u] usw. greifen.
+  function renderTable(src){
+    var rows = [], m, trRe = /\[tr\]([\s\S]*?)\[\/tr\]/gi;
+    while((m = trRe.exec(src))){
+      var cells = [], c, tdRe = /\[(td|th)\]([\s\S]*?)\[\/\1\]/gi;
+      while((c = tdRe.exec(m[1]))) cells.push(render(c[2]));
+      rows.push(cells);
+    }
+    if(!rows.length) return '';
+    return '<div class="tablewrap"><table class="bb">' + rows.map(function(cells){
+      return '<tr>' + cells.map(function(x){ return '<td>' + x + '</td>'; }).join('') + '</tr>';
+    }).join('') + '</table></div>';
+  }
+
+  function render(s){
+    var t = String(s == null ? '' : s), store = [];
+    // Blockelemente zwischenlagern, damit die Umbruch-Ersetzung sie nicht zerlegt.
+    // Die Marke @@n@@ hängt an keinen Leerzeichen und übersteht esc() unverändert.
+    function park(html){ store.push(html); return '@@' + (store.length - 1) + '@@'; }
+
+    t = t.replace(/\[cmimg\]([\s\S]*?)\[\/cmimg\]/gi, function(all, inner){
+      var m = /src\s*=\s*["']([^"']+)["']/i.exec(inner);
+      return park(m ? '<img src="' + esc(m[1]) + '" alt="">' : '');
+    });
+    t = t.replace(/\[table\]([\s\S]*?)\[\/table\]/gi, function(all, inner){
+      return park(renderTable(inner));
+    });
+
+    t = esc(t)
+      .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, '<b>$1</b>')
+      .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, '<i>$1</i>')
+      .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, '<u>$1</u>')
+      .replace(/\[s\]([\s\S]*?)\[\/s\]/gi, '<s>$1</s>')
+      .replace(/\[size=[^\]]*\]([\s\S]*?)\[\/size\]/gi, '$1')
+      .replace(/\[color=([#a-z0-9]+)\]([\s\S]*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
+      .replace(/\[url=([^\]]+)\]([\s\S]*?)\[\/url\]/gi, '<a href="$1" target="_blank" rel="noopener">$2</a>')
+      .replace(/\[img\]([\s\S]*?)\[\/img\]/gi, '<img src="$1" alt="">')
+      .replace(/\[hr\]/gi, '<hr>');
+
+    t = t.replace(/\r\n|\r|\n/g, '<br>');
+    t = t.replace(/@@(\d+)@@/g, function(all, i){ return store[+i] || ''; });
+    // überflüssige Umbrüche direkt vor und nach einer Tabelle
+    return t.replace(/(?:<br>\s*)+(<div class="tablewrap">)/g, '$1')
+            .replace(/(<\/table><\/div>)(?:\s*<br>)+/g, '$1');
+  }
+
+  // ---------- Suche ----------
+  function fold(s){
+    return String(s || '').toLowerCase()
+      .replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss')
+      .replace(/[^a-z0-9]+/g,' ').trim();
+  }
+
+  function matches(e, terms){
+    if(!terms.length) return true;
+    if(e.__hay == null){
+      // BBCode-Tags raus, sonst würden "table", "tr", "td" jede Suche fluten
+      e.__hay = fold((e.frage + ' ' + (e.optionen||[]).join(' ')).replace(/\[[^\]]*\]/g,' ')
+                     + ' ' + (e.bereiche||[]).join(' '));
+    }
+    return terms.every(function(t){ return e.__hay.indexOf(t) >= 0; });
+  }
+
+  function highlight(html, terms){
+    if(!terms.length) return html;
+    return html.replace(/>([^<]+)</g, function(all, txt){   // nur außerhalb von Tags
+      var out = txt;
+      terms.forEach(function(t){
+        if(t.length < 2) return;
+        out = out.replace(new RegExp('(' + t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')','gi'), '<mark>$1</mark>');
+      });
+      return '>' + out + '<';
+    });
+  }
+
+  // ---------- UI ----------
+  var elQ = document.getElementById('q'),
+      elQuiz = document.getElementById('quiz'),
+      elMode = document.getElementById('mode'),
+      elOpen = document.getElementById('onlyOpen'),
+      elTheme = document.getElementById('theme'),
+      elList = document.getElementById('list'),
+      elStats = document.getElementById('stats');
+
+  var bereiche = [];
+  DATEN.forEach(function(e){
+    (e.bereiche||[]).forEach(function(b){ if(bereiche.indexOf(b) < 0) bereiche.push(b); });
+  });
+  bereiche.sort();
+  elQuiz.innerHTML = '<option value="">alle Bereiche</option>' +
+    bereiche.map(function(b){ return '<option value="'+esc(b)+'">'+esc(b)+'</option>'; }).join('');
+
+  function draw(){
+    var terms = fold(state.q).split(' ').filter(Boolean);
+    var rows = DATEN.filter(function(e){
+      if(state.quiz && (e.bereiche||[]).indexOf(state.quiz) < 0) return false;
+      if(state.onlyOpen && e.geloest && !e.konflikt) return false;
+      return matches(e, terms);
+    });
+
+    elStats.textContent = rows.length + ' von ' + DATEN.length + ' Fragen'
+      + '  ·  ' + DATEN.filter(function(e){ return e.geloest; }).length + ' mit gesicherter Antwort'
+      + (state.abfrage ? '  ·  Abfragemodus: Antwort anklicken' : '');
+
+    if(!DATEN.length){
+      elList.innerHTML = '<div class="empty"><p>Noch keine Daten.</p>'
+        + '<p>Erst <code>node tools/collect.mjs --runs 10</code>, dann <code>node tools/parse.mjs</code>.</p></div>';
+      return;
+    }
+    if(!rows.length){ elList.innerHTML = '<div class="empty">Nichts gefunden.</div>'; return; }
+
+    var html = rows.map(function(e){
+      var pick = state.picks[e.id];
+      var opts = (e.optionen||[]).map(function(o, i){
+        var cls = [];
+        var zeigen = !state.abfrage || pick;
+        if(zeigen && (e.correct||[]).indexOf(o) >= 0) cls.push('correct');
+        if(pick && pick === o && (e.correct||[]).indexOf(o) < 0) cls.push('pick-wrong');
+        if(state.abfrage && !pick) cls.push('clickable');
+        return '<li class="'+cls.join(' ')+'" data-q="'+esc(e.id)+'" data-o="'+esc(o)+'">'
+             + '<span class="lbl">'+(LETTERS[i]||'•')+'</span><span>'+render(o)+'</span></li>';
+      }).join('');
+
+      return '<article class="card">'
+        + '<div class="meta">'
+        + (e.bereiche||[]).map(function(b){ return '<span class="chip">'+esc(b)+'</span>'; }).join('')
+        + (e.geloest ? '' : '<span class="chip warn">Antwort noch offen</span>')
+        + (e.konflikt ? '<span class="chip warn">widersprüchlich bewertet</span>' : '')
+        + '<span class="chip">'+(e.gesehen||0)+'× gezogen</span>'
+        + '</div>'
+        + '<div class="q">'+render(e.frage)+'</div>'
+        + '<ol class="opts">'+opts+'</ol>'
+        + '</article>';
+    }).join('');
+
+    elList.innerHTML = terms.length ? highlight(html, terms) : html;
+  }
+
+  elList.addEventListener('click', function(ev){
+    var li = ev.target.closest('li.clickable');
+    if(!li) return;
+    state.picks[li.dataset.q] = li.dataset.o;
+    save(); draw();
+  });
+  elQ.addEventListener('input', function(){ state.q = elQ.value; draw(); });
+  elQuiz.addEventListener('change', function(){ state.quiz = elQuiz.value; draw(); });
+  elMode.addEventListener('click', function(){
+    state.abfrage = !state.abfrage;
+    elMode.classList.toggle('on', state.abfrage);
+    elMode.textContent = 'Modus: ' + (state.abfrage ? 'Abfragen' : 'Nachschlagen');
+    if(!state.abfrage){ state.picks = {}; save(); }
+    draw();
+  });
+  elOpen.addEventListener('click', function(){
+    state.onlyOpen = !state.onlyOpen;
+    elOpen.classList.toggle('on', state.onlyOpen);
+    draw();
+  });
+  elTheme.addEventListener('click', function(){
+    var cur = document.documentElement.getAttribute('data-theme');
+    document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  });
+  document.addEventListener('keydown', function(e){
+    if(e.key === '/' && document.activeElement !== elQ){ e.preventDefault(); elQ.focus(); elQ.select(); }
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>
